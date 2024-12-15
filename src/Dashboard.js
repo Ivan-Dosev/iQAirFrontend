@@ -150,7 +150,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const API_URL = 'https://iqairbackend.thedrop.top:3005';
+        const API_URL = 'https://iqairbackend.thedrop.top';
         const response = await axios.get(`${API_URL}/api/air-quality`);
         setData(response.data.data);
         setLoading(false);
