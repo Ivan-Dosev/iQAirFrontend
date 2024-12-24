@@ -1,149 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
 import axios from 'axios';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Icon } from 'leaflet';
+import './Dashboard.css'; // Import the CSS file
 
-const DashboardContainer = styled.div`
-  max-width: 800px;
-  margin: 0 auto;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  padding: 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-`;
-
-const Header = styled.h1`
-  color: #1e3c72;
-  text-align: center;
-  margin-bottom: 2rem;
-`;
-
-const DataGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-`;
-
-const Card = styled.div`
-  background: white;
-  padding: 1.5rem;
-  border-radius: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-`;
-
-const CardTitle = styled.h3`
-  color: #666;
-  margin-bottom: 1rem;
-  text-align: center;
-  width: 100%;
-`;
-
-const Value = styled.div`
-  font-size: 2rem;
-  font-weight: bold;
-  color: #1e3c72;
-  text-align: center;
-`;
-
-const AQIIndicator = styled.div`
-  font-size: 2rem;
-  font-weight: bold;
-  text-align: center;
-  color: ${props => {
-    if (props.aqi <= 50) return '#00c853';
-    if (props.aqi <= 100) return '#ffd600';
-    if (props.aqi <= 150) return '#ff9100';
-    if (props.aqi <= 200) return '#ff3d00';
-    return '#b71c1c';
-  }};
-`;
-
-const AQIScale = styled.div`
-  padding: 1rem;
-  border-radius: 15px;
-  background: white;
-  margin-top: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-`;
-
-const ScaleItem = styled.div`
-  display: flex;
-  align-items: flex-start;
-  margin: 1rem 0;
-  padding: 1rem;
-  border-radius: 8px;
-  background: ${props => props.background || '#fff'};
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateX(10px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-`;
-
-const ScaleDescription = styled.p`
-  margin: 0.5rem 0 0 0;
-  font-size: 0.9rem;
-  color: #666;
-`;
-
-const FaceIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  border-radius: 50%;
-  background: ${props => props.color};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-  font-size: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-`;
-
-const ScaleContent = styled.div`
-  flex: 1;
-`;
-
-const InfoBox = styled.div`
-  background: #f5f5f5;
-  border-radius: 10px;
-  padding: 1rem;
-  margin: 1.5rem 0;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  border: 1px solid #e0e0e0;
-`;
-
-const InfoIcon = styled.div`
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  border-radius: 50%;
-  background: #1e3c72;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 14px;
-`;
-
-const InfoLink = styled.a`
-  color: #1e3c72;
-  text-decoration: none;
-  &:hover {
-    text-decoration: underline;
-  }
-`;
+const pinIcon = new Icon({
+  iconUrl: 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"%3E%3Ctext y="20" font-size="20"%3E📍%3C/text%3E%3C/svg%3E',
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+});
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
+  const [deviceData, setDeviceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -153,6 +23,10 @@ const Dashboard = () => {
         const API_URL = 'https://iqairbackend.thedrop.top';
         const response = await axios.get(`${API_URL}/api/air-quality`);
         setData(response.data.data);
+        
+        const deviceResponse = await axios.get('https://api.vtbg.com');
+        setDeviceData(deviceResponse.data);
+
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -189,117 +63,158 @@ const Dashboard = () => {
     };
     return {
       text: 'Много нездравословно',
-      description: 'Предупреждения за спешни състояния. Цялото население е засегнат.',
+      description: 'Предупре��дения за спешни състояния. Цялото население е засегнат.',
       color: '#b71c1c'
     };
   };
 
-  if (loading) return <DashboardContainer>Зареждане...</DashboardContainer>;
-  if (error) return <DashboardContainer>Грешка: {error}</DashboardContainer>;
-  if (!data) return <DashboardContainer>Няма налични данни</DashboardContainer>;
+  const handleShowGraph = (duration) => {
+    if (duration === '24h') {
+      window.open('https://grafana.vtbg.com/d/BHuEDmJ7k/last_24_h?orgId=1', '_blank');
+    } else if (duration === '7d') {
+      window.open('https://grafana.vtbg.com/d/8_jiKmJ7k/last-7d?orgId=1', '_blank');
+    }
+  };
+
+  if (loading) return <div className="DashboardContainer">Зареждане...</div>;
+  if (error) return <div className="DashboardContainer">Грешка: {error}</div>;
+  if (!data) return <div className="DashboardContainer">Няма налични данни</div>;
 
   const aqiStatus = getAQIStatus(data.current.pollution.aqius);
 
   return (
-    <DashboardContainer>
-      <Header>Качество на въздуха - {data.city}</Header>
-      <DataGrid>
-        <Card>
-          <CardTitle>Индекс за качество на въздуха</CardTitle>
-          <AQIIndicator aqi={data.current.pollution.aqius}>
+    <div className="DashboardContainer">
+      <h1 className="Header">Качество на въздуха - {data.city}</h1>
+      <div className="DataGrid">
+        <div className="Card">
+          <h3 className="CardTitle">Индекс за качество на въздуха</h3>
+          <div className="AQIIndicator" style={{ color: aqiStatus.color }}>
             {data.current.pollution.aqius}
-          </AQIIndicator>
+          </div>
           <div style={{ marginTop: '0.5rem', color: aqiStatus.color }}>
             {aqiStatus.text}
           </div>
-        </Card>
+        </div>
         
-        <Card>
-          <CardTitle>Температура</CardTitle>
-          <Value>{data.current.weather.tp}°C</Value>
-        </Card>
-      </DataGrid>
+        <div className="Card">
+          <h3 className="CardTitle">Температура</h3>
+          <div className="Value">{data.current.weather.tp}°C</div>
+        </div>
+      </div>
 
-      <InfoBox>
-        <InfoIcon>i</InfoIcon>
-        <InfoLink 
+      <MapContainer className="MapContainer" center={[43.067, 25.620]} zoom={13} style={{ height: '400px', width: '100%' }}>
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        {deviceData.map(device => {
+          const [lat, lng] = device.location.split(',').map(Number);
+          return (
+            <Marker key={device.id} position={[lat, lng]} icon={pinIcon}>
+              <Popup>
+                <div className="PopupContent">
+                  <h4>{device.name}</h4>
+                  <p><strong>Location:</strong> {device.location}</p>
+                  <p><strong>Time:</strong> {new Date(device.time).toLocaleString()}</p>
+                  <p><strong>PM10:</strong> {device.pm10} µg/m³</p>
+                  <p><strong>PM2.5:</strong> {device.pm25} µg/m³</p>
+                  <p><strong>Temperature:</strong> {device.temp}°C</p>
+                  <div style={{ marginTop: '10px' }}>
+                    <button onClick={() => handleShowGraph('24h')} style={{ marginRight: '5px' }}>
+                      Show Graph for 24h
+                    </button>
+                    <button onClick={() => handleShowGraph('7d')}>
+                      Show Graph for 7 Days
+                    </button>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+
+      <div className="InfoBox">
+        <div className="InfoIcon">i</div>
+        <a 
+          className="InfoLink"
           href="https://www.airnow.gov/aqi/aqi-basics/" 
           target="_blank" 
           rel="noopener noreferrer"
         >
           Научете повече за Индекса за качество на въздуха (AQI) и как той влияе на здравето
-        </InfoLink>
-      </InfoBox>
+        </a>
+      </div>
 
-      <AQIScale>
+      <div className="AQIScale">
         <h3>Ръководство за Индекса на качество на въздуха (AQI):</h3>
         
-        <ScaleItem background="#f1f8e9">
-          <FaceIcon color="#00c853">
+        <div className="ScaleItem" style={{ background: '#f1f8e9' }}>
+          <div className="FaceIcon" style={{ background: '#00c853' }}>
             <span role="img" aria-label="happy">😊</span>
-          </FaceIcon>
-          <ScaleContent>
+          </div>
+          <div className="ScaleContent">
             <strong>0-50: Добро</strong>
-            <ScaleDescription>
+            <div className="ScaleDescription">
               Качеството на въздуха е задоволително и представлява малък или никакъв риск. 
-              Препоръчва се проветряване на дома.
-            </ScaleDescription>
-          </ScaleContent>
-        </ScaleItem>
+              Преп��ръчва се проветряване на дома.
+            </div>
+          </div>
+        </div>
 
-        <ScaleItem background="#fff8e1">
-          <FaceIcon color="#ffd600">
+        <div className="ScaleItem" style={{ background: '#fff8e1' }}>
+          <div className="FaceIcon" style={{ background: '#ffd600' }}>
             <span role="img" aria-label="moderate">😐</span>
-          </FaceIcon>
-          <ScaleContent>
+          </div>
+          <div className="ScaleContent">
             <strong>51-100: Умерено</strong>
-            <ScaleDescription>
+            <div className="ScaleDescription">
               Чувствителни хора трябва да избягват продължително излагане на открито. 
               При респираторни симптоми като кашлица или задух, останете на закрито.
-            </ScaleDescription>
-          </ScaleContent>
-        </ScaleItem>
+            </div>
+          </div>
+        </div>
 
-        <ScaleItem background="#fff3e0">
-          <FaceIcon color="#ff9100">
+        <div className="ScaleItem" style={{ background: '#fff3e0' }}>
+          <div className="FaceIcon" style={{ background: '#ff9100' }}>
             <span role="img" aria-label="unhealthy-sensitive">😷</span>
-          </FaceIcon>
-          <ScaleContent>
+          </div>
+          <div className="ScaleContent">
             <strong>101-150: Нездравословно за чувствителни групи</strong>
-            <ScaleDescription>
-              Чувствителни групи могат да изпитат здравословни ефекти. 
+            <div className="ScaleDescription">
+              Чувствителни групи могат да изпитат зд��авословни ефекти. 
               Хора с респираторни заболявания трябва да ограничат престоя на открито.
-            </ScaleDescription>
-          </ScaleContent>
-        </ScaleItem>
+            </div>
+          </div>
+        </div>
 
-        <ScaleItem background="#ffebee">
-          <FaceIcon color="#ff3d00">
+        <div className="ScaleItem" style={{ background: '#ffebee' }}>
+          <div className="FaceIcon" style={{ background: '#ff3d00' }}>
             <span role="img" aria-label="unhealthy">🤢</span>
-          </FaceIcon>
-          <ScaleContent>
+          </div>
+          <div className="ScaleContent">
             <strong>151-200: Нездравословно</strong>
-            <ScaleDescription>
+            <div className="ScaleDescription">
               Всеки може да започне да изпитва здравословни ефекти. 
-              Чувствителните групи могат да изпитат по-сериозни здравoсловни ефекти.
-            </ScaleDescription>
-          </ScaleContent>
-        </ScaleItem>
+              Чувствителните групи могат да изпитат по-сериозни здравословни ефекти.
+            </div>
+          </div>
+        </div>
 
-        <ScaleItem background="#ffcdd2">
-          <FaceIcon color="#b71c1c">
+        <div className="ScaleItem" style={{ background: '#ffcdd2' }}>
+          <div className="FaceIcon" style={{ background: '#b71c1c' }}>
             <span role="img" aria-label="very-unhealthy">😨</span>
-          </FaceIcon>
-          <ScaleContent>
+          </div>
+          <div className="ScaleContent">
             <strong>201+: Много нездравословно</strong>
-            <ScaleDescription>
-              Предупреждения за спешни състояния. Цялото население е вероятно да бъде засегнато. 
+            <div className="ScaleDescription">
+              ��редупреждения за спешни състояния. Цялото население е вероятно да бъде засегнато. 
               Избягвайте всякакви дейности на открито.
-            </ScaleDescription>
-          </ScaleContent>
-        </ScaleItem>
-      </AQIScale>
-    </DashboardContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
