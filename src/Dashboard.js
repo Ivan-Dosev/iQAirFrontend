@@ -63,7 +63,7 @@ const Dashboard = () => {
     };
     return {
       text: 'Много нездравословно',
-      description: 'Предупре��дения за спешни състояния. Цялото население е засегнат.',
+      description: 'Предупреждение за спешни състояния. Цялото население е засегнат.',
       color: '#b71c1c'
     };
   };
@@ -116,8 +116,12 @@ const Dashboard = () => {
                   <h4>{device.name}</h4>
                   <p><strong>Location:</strong> {device.location}</p>
                   <p><strong>Time:</strong> {new Date(device.time).toLocaleString()}</p>
-                  <p><strong>PM10:</strong> {device.pm10} µg/m³</p>
-                  <p><strong>PM2.5:</strong> {device.pm25} µg/m³</p>
+                  <p style={{ color: device.pm10 <= 20 ? '#00c853' : device.pm10 <= 50 ? '#ffd600' : device.pm10 <= 100 ? '#ff9100' : '#b71c1c' }}>
+                    <strong>PM10:</strong> {device.pm10} µg/m³
+                  </p>
+                  <p style={{ color: device.pm25 <= 10 ? '#00c853' : device.pm25 <= 25 ? '#ffd600' : device.pm25 <= 50 ? '#ff9100' : device.pm25 <= 100 ? '#ff3d00' : '#b71c1c' }}>
+                    <strong>PM2.5:</strong> {device.pm25} µg/m³
+                  </p>
                   <p><strong>Temperature:</strong> {device.temp}°C</p>
                   <div style={{ marginTop: '10px' }}>
                     <button onClick={() => handleShowGraph('24h')} style={{ marginRight: '5px' }}>
@@ -126,6 +130,79 @@ const Dashboard = () => {
                     <button onClick={() => handleShowGraph('7d')}>
                       Show Graph for 7 Days
                     </button>
+                  </div>
+                  <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#666' }}>
+                    <strong>PM10 Levels:</strong>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Value</th>
+                          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>0-20</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Добро качество на въздуха</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>21-50</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Умерено</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>51-100</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Нездравословно за чувствителни</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>101-200</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Нездравословно</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>201-300</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Много нездравословно</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>&gt;300</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Опасно</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    
+                    <strong>PM2.5 Levels:</strong>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Value</th>
+                          <th style={{ border: '1px solid #ddd', padding: '8px' }}>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>0-10</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Добро качество на въздуха</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>11-25</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Умерено</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>26-50</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Нездравословно за чувствителни</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>51-100</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Нездравословно</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>101-150</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Много нездравословно</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>&gt;150</td>
+                          <td style={{ border: '1px solid #ddd', padding: '8px' }}>Опасно</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </Popup>
