@@ -24,8 +24,13 @@ const Dashboard = () => {
         const response = await axios.get(`${API_URL}/api/air-quality`);
         setData(response.data.data);
         
-        const deviceResponse = await axios.get('https://api.vtbg.com');
-        setDeviceData(deviceResponse.data);
+        try {
+          const deviceResponse = await axios.get('https://api.vtbg.com');
+          setDeviceData(deviceResponse.data);
+        } catch (deviceErr) {
+          console.error('Error fetching device data:', deviceErr);
+          setDeviceData([]); // Set empty array if device data fetch fails
+        }
 
         setLoading(false);
       } catch (err) {
@@ -84,7 +89,7 @@ const Dashboard = () => {
 
   return (
     <div className="DashboardContainer">
-      <h1 className="Header">Качество на въздуха - {data.city}</h1>
+      <h1 className="Header">Качество на въздуха - {data?.city || 'Велико Търново'}</h1>
       <div className="DataGrid">
         <div className="Card">
           <h3 className="CardTitle">Индекс за качество на въздуха</h3>
@@ -107,7 +112,7 @@ const Dashboard = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {deviceData.map(device => {
+        {deviceData.length > 0 && deviceData.map(device => {
           const [lat, lng] = device.location.split(',').map(Number);
           return (
             <Marker key={device.id} position={[lat, lng]} icon={pinIcon}>
@@ -210,6 +215,12 @@ const Dashboard = () => {
           );
         })}
       </MapContainer>
+
+      {deviceData.length === 0 && (
+        <div className="InfoBox" style={{ marginTop: '20px', textAlign: 'center' }}>
+          <p>Данните от устройствата в момента не са налични. Моля, опитайте по-късно.</p>
+        </div>
+      )}
 
       <div className="InfoBox">
         <div className="InfoIcon">i</div>
