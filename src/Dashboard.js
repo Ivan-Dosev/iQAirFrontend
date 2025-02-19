@@ -14,35 +14,47 @@ const pinIcon = new Icon({
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [deviceData, setDeviceData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingAirQuality, setLoadingAirQuality] = useState(true);
+  const [loadingDevices, setLoadingDevices] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAirQualityData = async () => {
       try {
         const API_URL = 'https://iqairbackend.thedrop.top';
         const response = await axios.get(`${API_URL}/api/air-quality`);
         setData(response.data.data);
-        
-        try {
-          const deviceResponse = await axios.get('https://api.vtbg.com');
-          setDeviceData(deviceResponse.data);
-        } catch (deviceErr) {
-          console.error('Error fetching device data:', deviceErr);
-          setDeviceData([]); // Set empty array if device data fetch fails
-        }
-
-        setLoading(false);
       } catch (err) {
         setError(err.message);
-        setLoading(false);
+      } finally {
+        setLoadingAirQuality(false);
       }
     };
 
-    fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const fetchDeviceData = async () => {
+      try {
+        const deviceResponse = await axios.get('https://api.vtbg.com');
+        setDeviceData(deviceResponse.data);
+      } catch (deviceErr) {
+        console.error('Error fetching device data:', deviceErr);
+        setDeviceData([]);
+      } finally {
+        setLoadingDevices(false);
+      }
+    };
 
-    return () => clearInterval(interval);
+    // Start both fetches independently
+    fetchAirQualityData();
+    fetchDeviceData();
+
+    // Set up intervals for both fetches
+    const airQualityInterval = setInterval(fetchAirQualityData, 10000);
+    const deviceInterval = setInterval(fetchDeviceData, 10000);
+
+    return () => {
+      clearInterval(airQualityInterval);
+      clearInterval(deviceInterval);
+    };
   }, []);
 
   const getAQIStatus = (aqi) => {
@@ -81,7 +93,10 @@ const Dashboard = () => {
     }
   };
 
-  if (loading) return <div className="DashboardContainer">Зареждане...</div>;
+  if (loadingAirQuality && loadingDevices) {
+    return <div className="DashboardContainer">Зареждане...</div>;
+  }
+
   if (error) return <div className="DashboardContainer">Грешка: {error}</div>;
   if (!data) return <div className="DashboardContainer">Няма налични данни</div>;
 
@@ -90,29 +105,40 @@ const Dashboard = () => {
   return (
     <div className="DashboardContainer">
       <h1 className="Header">Качество на въздуха - {data?.city || 'Велико Търново'}</h1>
-      <div className="DataGrid">
-        <div className="Card">
-          <h3 className="CardTitle">Индекс за качество на въздуха</h3>
-          <div className="AQIIndicator" style={{ color: aqiStatus.color }}>
-            {data.current.pollution.aqius}
+
+      {loadingAirQuality ? (
+        <div className="InfoBox" style={{ marginTop: '20px', textAlign: 'center' }}>
+          <p>Зареждане на данни за качеството на въздуха...</p>
+        </div>
+      ) : error ? (
+        <div className="InfoBox" style={{ marginTop: '20px', textAlign: 'center' }}>
+          <p>Грешка при зареждане на данните за качеството на въздуха: {error}</p>
+        </div>
+      ) : data && (
+        <div className="DataGrid">
+          <div className="Card">
+            <h3 className="CardTitle">Индекс за качество на въздуха</h3>
+            <div className="AQIIndicator" style={{ color: aqiStatus.color }}>
+              {data.current.pollution.aqius}
+            </div>
+            <div style={{ marginTop: '0.5rem', color: aqiStatus.color }}>
+              {aqiStatus.text}
+            </div>
           </div>
-          <div style={{ marginTop: '0.5rem', color: aqiStatus.color }}>
-            {aqiStatus.text}
+          
+          <div className="Card">
+            <h3 className="CardTitle">Температура</h3>
+            <div className="Value">{data.current.weather.tp}°C</div>
           </div>
         </div>
-        
-        <div className="Card">
-          <h3 className="CardTitle">Температура</h3>
-          <div className="Value">{data.current.weather.tp}°C</div>
-        </div>
-      </div>
+      )}
 
       <MapContainer className="MapContainer" center={[43.067, 25.620]} zoom={13} style={{ height: '400px', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {deviceData.length > 0 && deviceData.map(device => {
+        {!loadingDevices && deviceData.length > 0 && deviceData.map(device => {
           const [lat, lng] = device.location.split(',').map(Number);
           return (
             <Marker key={device.id} position={[lat, lng]} icon={pinIcon}>
@@ -216,7 +242,7 @@ const Dashboard = () => {
         })}
       </MapContainer>
 
-      {deviceData.length === 0 && (
+      {!loadingDevices && deviceData.length === 0 && (
         <div className="InfoBox" style={{ marginTop: '20px', textAlign: 'center' }}>
           <p>Данните от устройствата в момента не са налични. Моля, опитайте по-късно.</p>
         </div>
